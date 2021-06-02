@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button id="getBLE">Connect with the BLE device</button>
+
+    <script>
+      const deviceName = "905-97";
+      const bleService = "00001816-0000-1000-8000-00805f9b34fb";
+      const characteristicUuid = "00002a5b-0000-1000-8000-00805f9b34fb";
+
+      function handleNotifications(event) {
+        let value = event.target.value;
+        let a = [];
+        // Convert raw data bytes to hex values just for the sake of showing something.
+        // In the "real" world, you'd use data.getUint8, data.getUint16 or even
+        // TextDecoder to process raw data bytes.
+        for (let i = 0; i < value.byteLength; i++) {
+          a.push("0x" + ("00" + value.getUint8(i).toString(16)).slice(-2));
+        }
+        console.log("> " + a.join(" "));
+      }
+
+      const getDeviceInfo = () => {
+        console.log("Requesting BLE device info ...");
+
+        navigator.bluetooth
+          .requestDevice({
+            filters: [
+              {
+                name: deviceName,
+              },
+            ],
+            optionalServices: [
+              "00001816-0000-1000-8000-00805f9b34fb",
+              "00002a5b-0000-1000-8000-00805f9b34fb",
+            ],
+            // 00002a55-0000-1000-8000-00805f9b34fb
+            // 00002a5b-0000-1000-8000-00805f9b34fb
+            // 00002a5c-0000-1000-8000-00805f9b34fb
+            // 00002a5d-0000-1000-8000-00805f9b34fb
+          })
+          .then((device) => {
+            console.log("Connecting to device ... ", device);
+            return device.gatt.connect();
+          })
+          .then((server) => {
+            console.log("Getting GATT Server... ", server);
+            return server.getPrimaryService(bleService);
+          })
+          .then((service) => {
+            console.log("Getting Service...", service);
+            return service.getCharacteristic(characteristicUuid);
+
+            // get all characteristics
+            // return service.getCharacteristics();
+          })
+          .then((characteristic) => {
+            myCharacteristic = characteristic;
+            return myCharacteristic.startNotifications().then((_) => {
+              console.log("> Notifications started");
+              myCharacteristic.addEventListener(
+                "characteristicvaluechanged",
+                handleNotifications
+              );
+            });
+          })
+          .catch((error) => {
+            console.log("Error: ", error);
+          });
+      };
+
+      document.getElementById("getBLE").addEventListener("click", function () {
+        getDeviceInfo();
+      });
+    </script>
+  </body>
+</html>
